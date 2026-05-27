@@ -170,5 +170,3 @@ class ArvoreAVL:
 
     def reset_rotacoes(self):
         self.rotacoes = 0
-
-    
