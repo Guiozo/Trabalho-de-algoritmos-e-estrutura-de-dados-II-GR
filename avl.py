@@ -31,11 +31,21 @@ class AVLNode:
 class ArvoreAVL:
     def __init__(self):
         self.raiz = None
+        self.rotacoes = 0
 
     def _altura(self, node):
         if node is None:
             return 0
         return node.altura
+
+    def get_altura(self):
+        return self._altura(self.raiz)
+
+    def get_rotacoes(self):
+        return self.rotacoes
+
+    def reset_rotacoes(self):
+        self.rotacoes = 0
 
     def _fator_balanceamento(self, node):
         if node is None:
@@ -56,6 +66,7 @@ class ArvoreAVL:
         self._atualizar_altura(y)
         self._atualizar_altura(x)
 
+        self.rotacoes += 1
         return x
 
     def _rotacao_esquerda(self, x):
@@ -68,6 +79,7 @@ class ArvoreAVL:
         self._atualizar_altura(x)
         self._atualizar_altura(y)
 
+        self.rotacoes += 1
         return y
 
     def insert(self, valor):
@@ -105,39 +117,51 @@ class ArvoreAVL:
         return node
 
     def buscar(self, valor):
-        atual = self.raiz
-        while atual:
-            if valor == atual.valor:
-                print("Valor encontrado", valor)
-                return True
-            elif valor < atual.valor:
-                atual = atual.esquerda
-            else:
-                atual = atual.direita
-        print("Valor não encontrado", valor)
-        return False
+        return self._buscar_rec(self.raiz, valor)
+
+    def _buscar_rec(self, node, valor):
+        if node is None:
+            return None
+        if node.valor == valor:
+            return node.valor
+        if valor < node.valor:
+            return self._buscar_rec(node.esquerda, valor)
+        return self._buscar_rec(node.direita, valor)
 
     def remover(self, valor):
         self.raiz = self._remover_rec(self.raiz, valor)
 
+    def _menor_no(self, node):
+        atual = node
+        while atual.esquerda is not None:
+            atual = atual.esquerda
+        return atual
+
     def _remover_rec(self, node, valor):
         if node is None:
-            print("Elemento não encontrado")
-            return None
+            return node
 
         if valor < node.valor:
             node.esquerda = self._remover_rec(node.esquerda, valor)
         elif valor > node.valor:
             node.direita = self._remover_rec(node.direita, valor)
         else:
+            # Nó com apenas um filho ou folha
             if node.esquerda is None:
-                return node.direita
-            if node.direita is None:
-                return node.esquerda
+                temp = node.direita
+                node = None
+                return temp
+            elif node.direita is None:
+                temp = node.esquerda
+                node = None
+                return temp
 
-            suc = self._menor_no(node.direita)
-            node.valor = suc.valor
-            node.direita = self._remover_rec(node.direita, suc.valor)
+            temp = self._menor_no(node.direita)
+            node.valor = temp.valor
+            node.direita = self._remover_rec(node.direita, temp.valor)
+
+        if node is None:
+            return node
 
         self._atualizar_altura(node)
 
@@ -158,18 +182,3 @@ class ArvoreAVL:
             return self._rotacao_esquerda(node)
 
         return node
-
-    def _menor_no(self, node):
-        atual = node
-        while atual.esquerda:
-            atual = atual.esquerda
-        return atual
-
-    def inorder(self):
-        self._inorder_rec(self.raiz)
-
-    def _inorder_rec(self, node):
-        if node is not None:
-            self._inorder_rec(node.esquerda)
-            print(node.valor)
-            self._inorder_rec(node.direita)
