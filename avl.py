@@ -146,7 +146,6 @@ class ArvoreAVL:
         elif valor > node.valor:
             node.direita = self._remover_rec(node.direita, valor)
         else:
-            # Nó com apenas um filho ou folha
             if node.esquerda is None:
                 temp = node.direita
                 node = None
