@@ -104,7 +104,7 @@ class ArvoreAVL:
 
         return node
 
-def buscar(self, valor):
+    def buscar(self, valor):
         atual = self.raiz
         while atual:
             if valor == atual.valor:
