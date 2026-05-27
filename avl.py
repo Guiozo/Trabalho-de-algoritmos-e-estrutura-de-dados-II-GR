@@ -165,8 +165,11 @@ class ArvoreAVL:
             atual = atual.esquerda
         return atual
 
-    def get_rotacoes(self):
-        return self.rotacoes
+    def inorder(self):
+        self._inorder_rec(self.raiz)
 
-    def reset_rotacoes(self):
-        self.rotacoes = 0
+    def _inorder_rec(self, node):
+        if node is not None:
+            self._inorder_rec(node.esquerda)
+            print(node.valor)
+            self._inorder_rec(node.direita)
