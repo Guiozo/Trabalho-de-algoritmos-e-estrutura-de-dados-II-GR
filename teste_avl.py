@@ -1,8 +1,8 @@
 import sys
 sys.path.insert(0, '/mnt/agents/upload')
 
-from arvore_avl import PacketRule
-from arvore_avl import ArvoreAVL
+from avl import PacketRule
+from avl import ArvoreAVL
 
 
 def contar_nos(arv):
