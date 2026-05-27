@@ -103,3 +103,16 @@ class ArvoreAVL:
             return self._rotacao_esquerda(node)
 
         return node
+
+     def buscar(self, valor):
+           atual = self.raiz
+           while atual:
+            if valor == atual.valor:
+                print("Valor encontrado", valor)
+                return True
+            elif valor < atual.valor:
+                atual = atual.esquerda
+            else:
+                atual = atual.direita
+          print("Valor não encontrado", valor)
+          return False
