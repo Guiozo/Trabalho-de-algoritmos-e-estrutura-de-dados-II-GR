@@ -43,7 +43,14 @@ class ArvoreAVL:
 
     def get_rotacoes(self):
         return self.rotacoes
-
+        
+    def tamanho(self):
+        def _contar(node):
+            if node is None:
+                return 0
+            return 1 + _contar(node.esquerda) + _contar(node.direita)
+        return _contar(self.raiz)
+        
     def reset_rotacoes(self):
         self.rotacoes = 0
 
