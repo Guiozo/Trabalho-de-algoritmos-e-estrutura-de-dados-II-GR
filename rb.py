@@ -1,3 +1,11 @@
+from enum import IntEnum
+
+class Cor(IntEnum):
+    PRETO = 0
+    VERMELHO = 1
+
+cor = Cor
+
 class PacketRule:
     def __init__(self, rule_id, src_ip, dst_ip, priority):
         self.id = rule_id
@@ -26,14 +34,56 @@ class RBNode:
         self.esquerda = None
         self.direita = None
         self.parent = None
-        self.cor = 1
+        self.cor = Cor.VERMELHO
+
+class TNullSentinel:
+    def __init__(self):
+        self.cor = Cor.PRETO
+    def __eq__(self, other):
+        return other is None or isinstance(other, TNullSentinel)
+    def __repr__(self):
+        return "TNULL"
 
 
 class ArvoreRB:
     def __init__(self):
         self.raiz = None
+        self.TNULL = TNullSentinel()
+        self.rotacoes = 0
+        self.recolorir = 0
+
+    def tamanho(self):
+        def _contar(node):
+            if node is None or node == getattr(self, 'TNULL', None):
+                return 0
+            return 1 + _contar(node.esquerda) + _contar(node.direita)
+        return _contar(self.raiz)
+
+    def get_recolorir(self):
+        """Retorna o total de recolorings (pode retornar o atributo interno correspondente)"""
+        return getattr(self, 'recolorings', 0)
+    def get_altura(self):
+        def _height(node):
+            if node is None:
+                return 0
+            return 1 + max(_height(node.esquerda), _height(node.direita))
+        return _height(self.raiz)
+
+    def get_rotacoes(self):
+        return self.rotacoes
+
+    def get_recolorir(self):
+        return self.recolorir
+
+    def reset_contadores(self):
+        self.rotacoes = 0
+        self.recolorir = 0
+        
+    def reset_contadores_gerais(self): 
+        self.reset_contadores()
 
     def _rotacao_esquerda(self, x):
+        self.rotacoes += 1
         y = x.direita
         x.direita = y.esquerda
         if y.esquerda:
@@ -49,6 +99,7 @@ class ArvoreRB:
         x.parent = y
 
     def _rotacao_direita(self, x):
+        self.rotacoes += 1
         y = x.esquerda
         x.esquerda = y.direita
         if y.direita:
@@ -82,56 +133,59 @@ class ArvoreRB:
         return node
 
     def _consertar_insercao(self, k):
-        while k.parent and k.parent.cor == 1:
+        while k.parent and k.parent.cor == Cor.VERMELHO:
             if k.parent == k.parent.parent.direita:
                 tio = k.parent.parent.esquerda
-                if tio and tio.cor == 1:
-                    tio.cor = 0
-                    k.parent.cor = 0
-                    k.parent.parent.cor = 1
+                if tio and tio.cor == Cor.VERMELHO:
+                    tio.cor = Cor.PRETO
+                    k.parent.cor = Cor.PRETO
+                    k.parent.parent.cor = Cor.VERMELHO
+                    self.recolorir += 3
                     k = k.parent.parent
                 else:
                     if k == k.parent.esquerda:
                         k = k.parent
                         self._rotacao_direita(k)
-                    k.parent.cor = 0
-                    k.parent.parent.cor = 1
+                    k.parent.cor = Cor.PRETO
+                    k.parent.parent.cor = Cor.VERMELHO
+                    self.recolorir += 2
                     self._rotacao_esquerda(k.parent.parent)
             else:
                 tio = k.parent.parent.direita
-                if tio and tio.cor == 1:
-                    tio.cor = 0
-                    k.parent.cor = 0
-                    k.parent.parent.cor = 1
+                if tio and tio.cor == Cor.VERMELHO:
+                    tio.cor = Cor.PRETO
+                    k.parent.cor = Cor.PRETO
+                    k.parent.parent.cor = Cor.VERMELHO
+                    self.recolorir += 3
                     k = k.parent.parent
                 else:
                     if k == k.parent.direita:
                         k = k.parent
                         self._rotacao_esquerda(k)
-                    k.parent.cor = 0
-                    k.parent.parent.cor = 1
+                    k.parent.cor = Cor.PRETO
+                    k.parent.parent.cor = Cor.VERMELHO
+                    self.recolorir += 2
                     self._rotacao_direita(k.parent.parent)
             if k == self.raiz:
                 break
-        self.raiz.cor = 0
+        if self.raiz.cor != Cor.PRETO:
+            self.raiz.cor = Cor.PRETO
+            self.recolorir += 1
 
     def buscar(self, valor):
         atual = self.raiz
         while atual:
             if valor == atual.valor:
-                print("Valor encontrado", valor)
                 return True
             elif valor < atual.valor:
                 atual = atual.esquerda
             else:
                 atual = atual.direita
-        print("Valor não encontrado", valor)
         return False
 
     def remover(self, valor):
         node = self._buscar_no(self.raiz, valor)
         if node is None:
-            print("Elemento não encontrado")
             return False
         self._remover_no(node)
         return True
@@ -150,19 +204,23 @@ class ArvoreRB:
         y = z
         y_cor_original = y.cor
         if z.esquerda is None:
-            x = z.direita
+            x = z.direita         
+            x_parent = z.parent    
             self._transplantar(z, z.direita)
         elif z.direita is None:
             x = z.esquerda
+            x_parent = z.parent
             self._transplantar(z, z.esquerda)
         else:
             y = self._menor_no(z.direita)
             y_cor_original = y.cor
             x = y.direita
             if y.parent == z:
+                x_parent = y
                 if x:
                     x.parent = y
             else:
+                x_parent = y.parent
                 self._transplantar(y, y.direita)
                 y.direita = z.direita
                 y.direita.parent = y
@@ -170,9 +228,10 @@ class ArvoreRB:
             y.esquerda = z.esquerda
             y.esquerda.parent = y
             y.cor = z.cor
+            self.recolorir += 1
 
-        if y_cor_original == 0:
-            self._consertar_remocao(x)
+        if y_cor_original == Cor.PRETO:
+            self._consertar_remocao(x, x_parent)
 
     def _transplantar(self, u, v):
         if u.parent is None:
@@ -189,68 +248,90 @@ class ArvoreRB:
             node = node.esquerda
         return node
 
-    def _consertar_remocao(self, x):
-        while x != self.raiz and (x is None or x.cor == 0):
-            if x == x.parent.esquerda:
-                irmao = x.parent.direita
-                if irmao and irmao.cor == 1:
-                    irmao.cor = 0
-                    x.parent.cor = 1
-                    self._rotacao_esquerda(x.parent)
-                    irmao = x.parent.direita
+    def _consertar_remocao(self, x, x_parent):
+        while x != self.raiz and (x is None or x.cor == Cor.PRETO):
+            parent = x.parent if x is not None else x_parent
+            if x == parent.esquerda:
+                irmao = parent.direita
+                if irmao and irmao.cor == Cor.VERMELHO:
+                    irmao.cor = Cor.PRETO
+                    parent.cor = Cor.VERMELHO
+                    self.recolorir += 2
+                    self._rotacao_esquerda(parent)
+                    irmao = parent.direita
 
                 if irmao is None:
-                    x = x.parent
-                elif (irmao.esquerda is None or irmao.esquerda.cor == 0) and \
-                     (irmao.direita is None or irmao.direita.cor == 0):
-                    irmao.cor = 1
-                    x = x.parent
+                    x = parent
+                    x_parent = x.parent if x else None
+                elif (irmao.esquerda is None or irmao.esquerda.cor == Cor.PRETO) and \
+                     (irmao.direita is None or irmao.direita.cor == Cor.PRETO):
+                    irmao.cor = Cor.VERMELHO
+                    self.recolorir += 1
+                    x = parent
+                    x_parent = x.parent if x else None
                 else:
-                    if irmao.direita is None or irmao.direita.cor == 0:
+                    if irmao.direita is None or irmao.direita.cor == Cor.PRETO:
                         if irmao.esquerda:
-                            irmao.esquerda.cor = 0
-                        irmao.cor = 1
+                            irmao.esquerda.cor = Cor.PRETO
+                            self.recolorir += 1
+                        irmao.cor = Cor.VERMELHO
+                        self.recolorir += 1
                         self._rotacao_direita(irmao)
-                        irmao = x.parent.direita
+                        irmao = parent.direita
 
                     if irmao:
-                        irmao.cor = x.parent.cor
-                    x.parent.cor = 0
+                        irmao.cor = parent.cor
+                        self.recolorir += 1
+                    parent.cor = Cor.PRETO
+                    self.recolorir += 1
                     if irmao and irmao.direita:
-                        irmao.direita.cor = 0
-                    self._rotacao_esquerda(x.parent)
+                        irmao.direita.cor = Cor.PRETO
+                        self.recolorir += 1
+                    self._rotacao_esquerda(parent)
                     x = self.raiz
+                    x_parent = None
             else:
-                irmao = x.parent.esquerda
-                if irmao and irmao.cor == 1:
-                    irmao.cor = 0
-                    x.parent.cor = 1
-                    self._rotacao_direita(x.parent)
-                    irmao = x.parent.esquerda
+                irmao = parent.esquerda
+                if irmao and irmao.cor == Cor.VERMELHO:
+                    irmao.cor = Cor.PRETO
+                    parent.cor = Cor.VERMELHO
+                    self.recolorir += 2
+                    self._rotacao_direita(parent)
+                    irmao = parent.esquerda
 
                 if irmao is None:
-                    x = x.parent
-                elif (irmao.direita is None or irmao.direita.cor == 0) and \
-                     (irmao.esquerda is None or irmao.esquerda.cor == 0):
-                    irmao.cor = 1
-                    x = x.parent
+                    x = parent
+                    x_parent = x.parent if x else None
+                elif (irmao.direita is None or irmao.direita.cor == Cor.PRETO) and \
+                     (irmao.esquerda is None or irmao.esquerda.cor == Cor.PRETO):
+                    irmao.cor = Cor.VERMELHO
+                    self.recolorir += 1
+                    x = parent
+                    x_parent = x.parent if x else None
                 else:
-                    if irmao.esquerda is None or irmao.esquerda.cor == 0:
+                    if irmao.esquerda is None or irmao.esquerda.cor == Cor.PRETO:
                         if irmao.direita:
-                            irmao.direita.cor = 0
-                        irmao.cor = 1
+                            irmao.direita.cor = Cor.PRETO
+                            self.recolorir += 1
+                        irmao.cor = Cor.VERMELHO
+                        self.recolorir += 1
                         self._rotacao_esquerda(irmao)
-                        irmao = x.parent.esquerda
+                        irmao = parent.esquerda
 
                     if irmao:
-                        irmao.cor = x.parent.cor
-                    x.parent.cor = 0
+                        irmao.cor = parent.cor
+                        self.recolorir += 1
+                    parent.cor = Cor.PRETO
+                    self.recolorir += 1
                     if irmao and irmao.esquerda:
-                        irmao.esquerda.cor = 0
-                    self._rotacao_direita(x.parent)
+                        irmao.esquerda.cor = Cor.PRETO
+                        self.recolorir += 1
+                    self._rotacao_direita(parent)
                     x = self.raiz
+                    x_parent = None
         if x:
-            x.cor = 0
+            x.cor = Cor.PRETO
+            self.recolorir += 1
 
     def inorder(self):
         self._inorder_rec(self.raiz)
@@ -260,3 +341,5 @@ class ArvoreRB:
             self._inorder_rec(node.esquerda)
             print(node.valor)
             self._inorder_rec(node.direita)
+
+RB = ArvoreRB
